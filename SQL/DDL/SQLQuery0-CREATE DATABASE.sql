@@ -1,19 +1,7 @@
---SQLQuery0-CREATE DATABASE.sql
---https://learn.microsoft.com/en-us/sql/t-sql/statements/create-database-transact-sql?view=sql-server-ver17&tabs=sqlpool#:~:text=the%20SIZE%20parameter.-,SQL,-Copy
-CREATE DATABASE SPU_411_DDL
-ON
-(
-	NAME		=	SPU_411_DDL,
-	FILENAME	=	'D:\Microsoft SQL Server\MSSQL14.SQLEXPRESS\MSSQL\DATA\SPU_411_DDL.mdf',
-	SIZE		=	8 MB,
-	MAXSIZE		=	500 MB,
-	FILEGROWTH	=	8 MB
-)
-LOG ON
-(
-	NAME		=	SPU_411_Log,
-	FILENAME	=	'D:\Microsoft SQL Server\MSSQL14.SQLEXPRESS\MSSQL\DATA\SPU_411_DDL.ldf',
-	SIZE		=	8 MB,
-	MAXSIZE		=	500 MB,
-	FILEGROWTH	=	5 MB
-)
+USE master;
+GO
+
+IF DB_ID(N'SPU_411_DDL') IS NULL
+BEGIN
+    CREATE DATABASE SPU_411_DDL;
+END
