@@ -1,34 +1,59 @@
 USE master
 GO
 
-CREATE FUNCTION dbo.GetNextDate(@group_name AS NVARCHAR(24))
-RETURNS TINYINT
+CREATE FUNCTION dbo.GetNextDate
+(
+    @GroupId INT
+)
+RETURNS DATE
 AS
+BEGIN
+    DECLARE
+        @LastDate DATE,
+        @NextDate DATE,
+        @Weekdays TINYINT,
+        @DayMask TINYINT;
+
+    SELECT @LastDate = MAX([date])
+    FROM Schedule
+    WHERE [group] = @GroupId;
+
+    IF @LastDate IS NULL
+        SELECT @LastDate = start_date
+        FROM [Group]
+        WHERE group_id = @GroupId;
+
+    SELECT @Weekdays = weekdays
+    FROM [Group]
+    WHERE group_id = @GroupId;
+
+    SET @NextDate = DATEADD(DAY, 1, @LastDate);
+
+    WHILE 1 = 1
     BEGIN
-        DECLARE @group_id AS INT = (SELECT group_id FROM [Group] WHERE group_name=@group_name);
-        DECLARE @learning_days AS TINYINT = (SELECT weekdays FROM [Group] WHERE group_id=@group_name);
-        DECLARE @last_date AS DATE = dbo.GetLastDate(@group_name);
-        DECLARE @weekday AS TINYINT = DATEPART(WEEKDAY, @last_date);
-        DECLARE @day AS TINYINT = @weekday;
-        DECLARE @next_day AS TINYINT = 0;
-        WHILE @day < 7
-        IF (POWER(2,@day) & @learning_days > 0)
+        SET @DayMask =
+            CASE DATEPART(WEEKDAY, @NextDate)
+                WHEN 1 THEN 64  -- Su
+                WHEN 2 THEN 1   -- Mo
+                WHEN 3 THEN 2   -- Te
+                WHEN 4 THEN 4   -- We
+                WHEN 5 THEN 8   -- Th
+                WHEN 6 THEN 16  -- Fr
+                WHEN 7 THEN 32  -- Sa
+            END;
+
+        IF (@Weekdays & @DayMask) <> 0
+           AND NOT EXISTS (
+                SELECT 1
+                FROM NonStudyDays
+                WHERE @NextDate BETWEEN date_from AND date_to
+           )
         BEGIN
-            SET @next_day = @day;
-            BREAK;
-        END
-        IF @next_day = @weekday
-        BEGIN
-            SET @day = 1;
-            WHILE @day < @weekday
-            BEGIN
-                IF POWER(2,@day-1) & @learning_days > 0
-                BEGIN
-                   SET @next_day=@day;
-                   BREAK;
-                END
-                SET @next_day = @day+1;
-            END
-        END
-    RETURN @next_day
-    END
+            RETURN @NextDate;
+        END;
+
+        SET @NextDate = DATEADD(DAY, 1, @NextDate);
+    END;
+
+    RETURN NULL;
+END;
