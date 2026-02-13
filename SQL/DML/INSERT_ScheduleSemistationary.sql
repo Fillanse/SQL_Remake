@@ -39,7 +39,7 @@ BEGIN
     -- Получение метаданных группы
     DECLARE @group_name NVARCHAR(50) = NULL;
     DECLARE @group_start DATE = NULL;
-    DECLARE @group_weekdays BIGINT = NULL; -- Маска: bit0=Mon ... bit6=Sun
+    DECLARE @group_weekdays TINYINT = NULL; -- Маска: bit0=Mon ... bit6=Sun
     DECLARE @group_table NVARCHAR(50) = NULL;
 
     IF OBJECT_ID('master.dbo.Groups', 'U') IS NOT NULL
@@ -47,7 +47,7 @@ BEGIN
         SELECT TOP (1) @group_name = group_name, @group_start = TRY_CAST(start_date AS DATE)
         FROM master.dbo.Groups WHERE group_id = @group_id;
         IF EXISTS(SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('master.dbo.Groups') AND name = 'weekdays')
-            SELECT @group_weekdays = TRY_CAST(weekdays AS BIGINT) FROM master.dbo.Groups WHERE group_id = @group_id;
+            SELECT @group_weekdays = TRY_CAST(weekdays AS TINYINT) FROM master.dbo.Groups WHERE group_id = @group_id;
         SET @group_table = 'Groups';
     END
 
@@ -56,7 +56,7 @@ BEGIN
         SELECT TOP (1) @group_name = group_name, @group_start = TRY_CAST(start_date AS DATE)
         FROM master.dbo.[Group] WHERE group_id = @group_id;
         IF EXISTS(SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('master.dbo.[Group]') AND name = 'weekdays')
-            SELECT @group_weekdays = TRY_CAST(weekdays AS BIGINT) FROM master.dbo.[Group] WHERE group_id = @group_id;
+            SELECT @group_weekdays = TRY_CAST(weekdays AS TINYINT) FROM master.dbo.[Group] WHERE group_id = @group_id;
         SET @group_table = 'Group';
     END
 
@@ -90,7 +90,7 @@ BEGIN
             WHILE @tries < 14 AND @first <= @end_date
             BEGIN
                 DECLARE @iso_wd TINYINT = ((DATEPART(WEEKDAY, @first) + @@DATEFIRST - 2) % 7) + 1;
-                DECLARE @bit BIGINT = CAST(POWER(CONVERT(FLOAT,2), @iso_wd - 1) AS BIGINT);
+                DECLARE @bit TINYINT = CAST(POWER(CONVERT(FLOAT,2), @iso_wd - 1) AS TINYINT);
                 IF (@group_weekdays & @bit) <> 0 BREAK;
                 SET @first = DATEADD(DAY, 1, @first);
                 SET @tries = @tries + 1;
