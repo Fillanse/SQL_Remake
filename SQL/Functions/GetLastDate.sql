@@ -1,13 +1,21 @@
-USE master
+USE master;
 GO
 
-CREATE FUNCTION GetLastDate(@group_name AS NVARCHAR(24))
+CREATE OR ALTER FUNCTION dbo.GetLastDate(@group_name NVARCHAR(24))
 RETURNS DATE
 AS
-    BEGIN
-        DECLARE @group_id AS INT = (SELECT group_id FROM [Group] WHERE group_name=@group_name);
-        DECLARE @last_date AS DATE = NULL;
-        IF EXISTS(SELECT [group] FROM Schedule WHERE [group]=@group_id)
-            SET @last_date = (SELECT MAX([date]) FROM Schedule WHERE [group]=@group_id);
-        RETURN @last_date;
-    END
+BEGIN
+    -- Получить id группы по имени
+    DECLARE @group_id INT = (SELECT group_id FROM master.dbo.Groups WHERE group_name = @group_name);
+
+    -- Если группа не найдена, вернуть NULL
+    IF @group_id IS NULL
+        RETURN NULL;
+
+    -- Максимальная дата занятий для группы
+    DECLARE @last_date DATE;
+    SELECT @last_date = MAX([date]) FROM master.dbo.Schedule WHERE [group] = @group_id;
+
+    RETURN @last_date;
+END
+GO
