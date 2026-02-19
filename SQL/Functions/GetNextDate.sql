@@ -48,6 +48,11 @@ BEGIN
                 FROM NonStudyDays
                 WHERE @NextDate BETWEEN date_from AND date_to
            )
+           AND NOT EXISTS (
+                SELECT 1
+                FROM DaysOff
+                WHERE [date] = @NextDate
+           )
         BEGIN
             RETURN @NextDate;
         END;

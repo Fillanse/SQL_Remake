@@ -1,68 +1,46 @@
-USE master;
+--SQLQuery1-INSERT ScheduleSemi PROCEDURE.sql
+USE SPU_411;
 GO
 
-IF NOT EXISTS (SELECT 1 FROM master.sys.tables WHERE name = 'Schedule' AND schema_id = SCHEMA_ID('dbo'))
+CREATE OR ALTER PROCEDURE INSERT_ScheduleSemistationary
+		 @group_name		as		nvarchar(24)
+		,@discipline_name	as		nvarchar(150)
+		,@teacher			as		nvarchar(50)
+AS
 BEGIN
-    EXEC('CREATE TABLE master.dbo.Schedule (
-        lesson_id BIGINT PRIMARY KEY,
-        [date] DATE NOT NULL,
-        [time] TIME NOT NULL,
-        [group] INT NOT NULL,
-        discipline SMALLINT NOT NULL,
-        teacher INT NOT NULL,
-        spent BIT NOT NULL,
-        [subject] NVARCHAR(256) NULL
-    );');
-END
-GO
+	DECLARE @group_id			AS	INT		=	(SELECT group_id		FROM Groups		 WHERE group_name=@group_name);
+	DECLARE @discipline_id		AS	SMALLINT=	(SELECT discipline_id	FROM Disciplines WHERE discipline_name LIKE @discipline_name);
+	DECLARE @number_of_lessons	AS	TINYINT =	(SELECT number_of_lessons FROM Disciplines WHERE discipline_id=@discipline_id);
+	DECLARE @lesson_number		AS	TINYINT	=	(SELECT COUNT(discipline) FROM Schedule WHERE [group]=@group_id AND discipline=@discipline_id);
+	--IF @lesson_number=0 SET @lesson_number=1;
+	DECLARE @teacher_id			AS	SMALLINT=	(SELECT teacher_id		FROM Teachers	 WHERE last_name = @teacher);
+--	DECLARE @start_date			AS	DATE	=	dbo.GetNextDate(@group_name);
+	DECLARE @date				AS	DATE	=	dbo.GetLastDate(@group_name);
+	DECLARE @start_time			AS	TIME	=	(SELECT start_time		FROM Groups		 WHERE group_id=@group_id);
+	DECLARE @time				AS	TIME	=	@start_time;
 
-IF NOT EXISTS (SELECT 1 FROM master.sys.tables WHERE name = 'AttendanceAndGrades' AND schema_id = SCHEMA_ID('dbo'))
-BEGIN
-    EXEC('CREATE TABLE master.dbo.AttendanceAndGrades (
-        student INT,
-        lesson BIGINT,
-        present BIT NOT NULL,
-        grade_1 TINYINT NULL,
-        grade_2 TINYINT NULL,
-        PRIMARY KEY(student, lesson)
-    );');
-    EXEC('ALTER TABLE master.dbo.AttendanceAndGrades ADD CONSTRAINT CK_Grade_1 CHECK (grade_1 > 0 AND grade_1 <= 12);');
-    EXEC('ALTER TABLE master.dbo.AttendanceAndGrades ADD CONSTRAINT CK_Grade_2 CHECK (grade_2 > 0 AND grade_2 <= 12);');
-END
-GO
+	IF @date IS NULL SET @date = (SELECT start_date FROM Groups WHERE group_id=@group_id);
 
-IF NOT EXISTS (SELECT 1 FROM master.sys.tables WHERE name = 'Exams' AND schema_id = SCHEMA_ID('dbo'))
-BEGIN
-    EXEC('CREATE TABLE master.dbo.Exams (
-        student INT,
-        discipline SMALLINT,
-        grade TINYINT,
-        PRIMARY KEY(student, discipline)
-    );');
-    EXEC('ALTER TABLE master.dbo.Exams ADD CONSTRAINT CK_Grade CHECK (grade > 0 AND grade <= 12);');
-END
-GO
+	PRINT '--------------------------------------------------------------------';
+	PRINT @group_id;
+	PRINT @discipline_id;
+	PRINT @teacher;
+	PRINT @date;
+	PRINT @time;
+	PRINT @lesson_number;
+	PRINT '--------------------------------------------------------------------';
 
-IF NOT EXISTS (SELECT 1 FROM master.sys.foreign_keys WHERE name = 'FK_Grades_Students')
-BEGIN
-    EXEC('ALTER TABLE master.dbo.AttendanceAndGrades ADD CONSTRAINT FK_Grades_Students FOREIGN KEY(student) REFERENCES master.dbo.Students(student_id);');
+	WHILE @lesson_number < @number_of_lessons
+	BEGIN
+		IF dbo.GetLastDate(@group_name) IS NOT NULL SET @date = dbo.GetNextDate(@group_name);
+		SET @time = @start_time;
+		EXEC sp_InsertLesson @group_id, @discipline_id, @teacher_id, @date, @time OUTPUT, @lesson_number OUTPUT;
+		--SET @time = DATEADD(MINUTE,  95,@time);
+		EXEC sp_InsertLesson @group_id, @discipline_id, @teacher_id, @date, @time OUTPUT, @lesson_number OUTPUT;
+		--SET @time = DATEADD(MINUTE,  95,@time);
+		EXEC sp_InsertLesson @group_id, @discipline_id, @teacher_id, @date, @time OUTPUT, @lesson_number OUTPUT;
+		--https://stackoverflow.com/questions/11632831/incorrect-syntax-near-minute-when-passing-expression-to-stored-procedure
+		PRINT @lesson_number;
+		PRINT '======================================================'
+	END
 END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM master.sys.foreign_keys WHERE name = 'FK_Grades_Schedule')
-BEGIN
-    EXEC('ALTER TABLE master.dbo.AttendanceAndGrades ADD CONSTRAINT FK_Grades_Schedule FOREIGN KEY(lesson) REFERENCES master.dbo.Schedule(lesson_id);');
-END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM master.sys.foreign_keys WHERE name = 'FK_Exams_Students')
-BEGIN
-    EXEC('ALTER TABLE master.dbo.Exams ADD CONSTRAINT FK_Exams_Students FOREIGN KEY(student) REFERENCES master.dbo.Students(student_id);');
-END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM master.sys.foreign_keys WHERE name = 'FK_Exams_Disciplines')
-BEGIN
-    EXEC('ALTER TABLE master.dbo.Exams ADD CONSTRAINT FK_Exams_Disciplines FOREIGN KEY(discipline) REFERENCES master.dbo.Disciplines(discipline_id);');
-END
-GO

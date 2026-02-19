@@ -1,4 +1,4 @@
-﻿USE master;
+USE master;
 GO
 
 IF DB_ID(N'SPU_411_DDL') IS NOT NULL
